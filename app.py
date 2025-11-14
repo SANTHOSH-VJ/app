@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify, render_template, redirect
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func
 import hashlib
 import base64
 import os
@@ -50,7 +49,6 @@ def shorten_url():
     if alias:
         alias = alias.strip().replace(" ", "-")
 
-        # Check if alias already used
         existing = URLMapping.query.filter_by(short_url=alias).first()
         if existing:
             return jsonify({"success": False, "error": "Alias already taken"}), 400
@@ -64,7 +62,6 @@ def shorten_url():
     if existing_long and not alias:
         return jsonify({"success": True, "short_url": f"{request.host_url}{existing_long.short_url}"})
 
-    # Insert new mapping
     new_entry = URLMapping(long_url=long_url, short_url=short_url)
     db.session.add(new_entry)
     db.session.commit()
@@ -76,11 +73,13 @@ def redirect_url(short_url):
     entry = URLMapping.query.filter_by(short_url=short_url).first()
 
     if entry:
-        entry.clicks = entry.clicks + 1
+        entry.clicks += 1
         db.session.commit()
         return redirect(entry.long_url)
 
     return "Short URL not found", 404
 
 if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()   # <-- IMPORTANT
     app.run(debug=True)
